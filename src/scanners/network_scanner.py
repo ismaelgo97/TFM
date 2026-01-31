@@ -6,8 +6,9 @@ from utils import Spinner
 
 
 class NetworkScanner:
-    def __init__(self, target_ip):
+    def __init__(self, target_ip, vuln_scan=False):
         self.target = target_ip
+        self.vuln_scan = vuln_scan
         self.nm = None
 
     def _is_installed(self):
@@ -20,7 +21,8 @@ class NetworkScanner:
             return
 
         self.nm = nmap.PortScanner()
-        print(f"[*] Running scan on {self.target}...")
+        scan_type = "vulnerability" if self.vuln_scan else "basic"
+        print(f"[*] Running {scan_type} scan on {self.target}...")
 
         spinner = Spinner(
             message="[*] Scanning ports and services (this may take a while)..."
@@ -28,7 +30,10 @@ class NetworkScanner:
         spinner.start()
 
         try:
-            self.nm.scan(self.target, arguments="-sV -T4 --script vuln")
+            args = "-sV -T4"
+            if self.vuln_scan:
+                args += " --script vuln"
+            self.nm.scan(self.target, arguments=args)
             spinner.stop()
             self._print_report()
         except Exception as e:

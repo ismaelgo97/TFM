@@ -1,42 +1,35 @@
 import argparse
 import sys
-
 from scanners.network_scanner import NetworkScanner
-
+from scanners.web_scanner import WebScanner
 
 def main():
-    """Entry point for the TFM security tool. Handles subcommands (e.g. scan)."""
-    parser = argparse.ArgumentParser(
-        description="TFM: Automated Security Detection and Prevention System",
-        add_help=False,
-    )
+    parser = argparse.ArgumentParser(description="TFM Security Tool - Detection & Prevention")
+    subparsers = parser.add_subparsers(dest="command", help="Available commands")
 
-    parser.add_argument("subcommand", nargs="?", help="Action to perform (e.g., scan)")
-    parser.add_argument(
-        "extra_args", nargs=argparse.REMAINDER, help="Arguments for the subcommand"
-    )
+    # Network Scan Command
+    net_parser = subparsers.add_parser("scan", help="Run network scan")
+    net_parser.add_argument("target", help="Target IP address")
+    net_parser.add_argument("-v", "--vulnerability", action="store_true", help="Enable vulnerability scripts")
+
+    # Web Scan Command
+    web_parser = subparsers.add_parser("web-scan", help="Run web vulnerability scan")
+    web_parser.add_argument("target", help="Target IP/URL")
+    web_parser.add_argument("-u", "--username", required=True, help="Login username")
+    web_parser.add_argument("-p", "--password", required=True, help="Login password")
 
     args = parser.parse_args()
 
-    match args.subcommand:
-        case "scan":
-            if not args.extra_args:
-                print("Usage: uv run tool scan <target_ip>")
-                sys.exit(1)
+    if args.command == "scan":
+        scanner = NetworkScanner(args.target, vuln_scan=args.vulnerability)
+        scanner.execute()
 
-            target_ip = args.extra_args[0]
-            scanner = NetworkScanner(target_ip)
-            scanner.execute()
+    elif args.command == "web-scan":
+        scanner = WebScanner(args.target, args.username, args.password)
+        scanner.execute()
 
-        case "help" | None:
-            print("\n[!] TFM Security Tool - Available Commands:")
-            print("  scan <IP>    Run network & vulnerability scans")
-            print("  help         Show this message")
-
-        case _:
-            print(f"[-] Error: Unknown command '{args.subcommand}'")
-            print("[*] Use 'uv run tool help' for available options.")
-            sys.exit(1)
+    else:
+        parser.print_help()
 
 
 if __name__ == "__main__":
