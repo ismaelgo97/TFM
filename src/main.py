@@ -1,15 +1,23 @@
 import argparse
-import sys
+
 from scanners.network_scanner import NetworkScanner
 from scanners.web_scanner import WebScanner
 
+
 def main():
-    parser = argparse.ArgumentParser(description="TFM Security Tool - Detection & Prevention")
+    parser = argparse.ArgumentParser(
+        description="TFM Security Tool - Detection & Prevention"
+    )
     subparsers = parser.add_subparsers(dest="command", help="Available commands")
 
     net_parser = subparsers.add_parser("scan", help="Run network scan")
     net_parser.add_argument("target", help="Target IP address")
-    net_parser.add_argument("-v", "--vulnerability", action="store_true", help="Enable vulnerability scripts")
+    net_parser.add_argument(
+        "-v",
+        "--vulnerability",
+        action="store_true",
+        help="Enable vulnerability scripts",
+    )
 
     # ==========================================
     # 2. Web Scan Command
@@ -20,10 +28,11 @@ def main():
     web_parser.add_argument("-p", "--password", required=True, help="Login password")
 
     web_parser.add_argument(
-        "-r", "--routes", 
-        nargs='+', 
-        help="List of specific relative routes to seed the scanner with (space separated)",
-        default=None
+        "-r",
+        "--routes",
+        nargs="+",
+        help="Routes to seed the scanner (space-separated)",
+        default=None,
     )
 
     args = parser.parse_args()
@@ -48,6 +57,7 @@ def main():
 
         case _:
             parser.print_help()
+
 
 if __name__ == "__main__":
     main()

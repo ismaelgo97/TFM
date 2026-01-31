@@ -1,28 +1,34 @@
-import time
-import requests
 import socket
+import time
+
+import requests
 from bs4 import BeautifulSoup
 from zapv2 import ZAPv2
 
+
 class WebScanner:
-    def __init__(self, target_ip, username, password, zap_addr='127.0.0.1', zap_port='8080'):
+    def __init__(
+        self, target_ip, username, password, zap_addr="127.0.0.1", zap_port="8080"
+    ):
         if target_ip.startswith("http"):
             self.base_url = target_ip
         else:
             self.base_url = f"http://{target_ip}"
-            
+
         self.username = username
         self.password = password
         self.zap_addr = zap_addr
         self.zap_port = zap_port
-        
+
         if not self.check_zap_status():
             raise Exception(f"ZAP is not running at {zap_addr}:{zap_port}")
 
-        self.zap = ZAPv2(proxies={
-            'http': f'http://{zap_addr}:{zap_port}',
-            'https': f'http://{zap_addr}:{zap_port}'
-        })
+        self.zap = ZAPv2(
+            proxies={
+                "http": f"http://{zap_addr}:{zap_port}",
+                "https": f"http://{zap_addr}:{zap_port}",
+            }
+        )
         self.session = requests.Session()
 
     def check_zap_status(self):
@@ -35,37 +41,46 @@ class WebScanner:
         print(f"[*] Authenticating to {self.base_url}/login.php...")
         try:
             resp = self.session.get(f"{self.base_url}/login.php")
-            soup = BeautifulSoup(resp.text, 'html.parser')
-            token = soup.find('input', {'name': 'user_token'})
-            
+            soup = BeautifulSoup(resp.text, "html.parser")
+            token = soup.find("input", {"name": "user_token"})
+
             if not token:
                 print("[-] Error: CSRF 'user_token' not found on login page.")
-                print(f"    (Debug: Page returned {resp.status_code} and length {len(resp.text)})")
+                print(
+                    f"    (Debug: Page returned {resp.status_code} "
+                    f"and length {len(resp.text)})"
+                )
                 return False
 
             payload = {
                 "username": self.username,
                 "password": self.password,
                 "Login": "Login",
-                "user_token": token['value']
+                "user_token": token["value"],
             }
-            post_resp = self.session.post(f"{self.base_url}/login.php", data=payload, allow_redirects=True)
+            post_resp = self.session.post(
+                f"{self.base_url}/login.php", data=payload, allow_redirects=True
+            )
 
             if "Login failed" in post_resp.text:
-                print(f"[-] Login Failed: The server rejected username '{self.username}'.")
+                print(
+                    f"[-] Login Failed: The server rejected username '{self.username}'."
+                )
                 return False
-            
-            # DVWA usually redirects to index.php on success. 
+
+            # DVWA usually redirects to index.php on success.
             # If we are still at login.php, something went wrong.
             if "login.php" in post_resp.url:
-                print("[-] Login Failed: Redirected back to login page (Session not created).")
+                print(
+                    "[-] Login Failed: Redirected to login (session not created)."
+                )
                 return False
 
             if post_resp.status_code == 200:
                 print("[+] Login Successful.")
                 # 4. Force Security Low
                 return self.set_security_low()
-            
+
             print(f"[-] Login Failed: Unknown response code {post_resp.status_code}")
             return False
 
@@ -77,28 +92,29 @@ class WebScanner:
         print("[*] Setting Security Level to LOW...")
         try:
             resp = self.session.get(f"{self.base_url}/security.php")
-            soup = BeautifulSoup(resp.text, 'html.parser')
-            token = soup.find('input', {'name': 'user_token'})
-            
-            if not token: return False
+            soup = BeautifulSoup(resp.text, "html.parser")
+            token = soup.find("input", {"name": "user_token"})
+
+            if not token:
+                return False
 
             payload = {
-                "security": "low", 
-                "seclev_submit": "Submit", 
-                "user_token": token['value']
+                "security": "low",
+                "seclev_submit": "Submit",
+                "user_token": token["value"],
             }
             self.session.post(f"{self.base_url}/security.php", data=payload)
             return True
-        except:
+        except Exception as e:
+            print(f"[-] Error: {e}")
             return False
 
     def run_scan(self, seed_routes=None):
-        # Explicitly print if login fails so the user isn't left wondering
         if not self.login():
             print("[-] Critical: Scan aborted because login failed.")
             return
 
-        print(f"[*] Locking Session for Active Scan...")
+        print("[*] Locking Session for Active Scan...")
 
         cookie_dict = self.session.cookies.get_dict()
         cookie_str = "; ".join([f"{k}={v}" for k, v in cookie_dict.items()])
@@ -108,20 +124,19 @@ class WebScanner:
 
         print(f"    [+] Injecting Header: Cookie: {cookie_str}")
 
-        # 2. Tell ZAP to overwrite the 'Cookie' header on EVERY request
-        # parameters: description, enabled, matchType (REQ_HEADER), matchString, replacement, initiators
+        # Tell ZAP to overwrite the 'Cookie' header on EVERY request
         try:
             # Clear old rules first to prevent duplicates
             for rule in self.zap.replacer.rules:
-                self.zap.replacer.remove_rule(rule['description'])
-                
+                self.zap.replacer.remove_rule(rule["description"])
+
             self.zap.replacer.add_rule(
                 description="ForceSession",
                 enabled=True,
                 matchtype="REQ_HEADER",
                 matchregex=False,
                 matchstring="Cookie",
-                replacement=cookie_str
+                replacement=cookie_str,
             )
         except Exception as e:
             print(f"[-] Warning: ZAP Replacer API issue (is ZAP updated?): {e}")
@@ -129,41 +144,47 @@ class WebScanner:
         self.zap.spider.exclude_from_scan(f"{self.base_url}/logout.php")
 
         seeds = ["/index.php"]
-        if seed_routes: seeds.extend(seed_routes)
-        
+        if seed_routes:
+            seeds.extend(seed_routes)
+
         print(f"[*] Seeding ZAP with {len(seeds)} routes...")
-        proxies = {'http': f'http://{self.zap_addr}:{self.zap_port}', 'https': f'http://{self.zap_addr}:{self.zap_port}'}
-        
+        proxies = {
+            "http": f"http://{self.zap_addr}:{self.zap_port}",
+            "https": f"http://{self.zap_addr}:{self.zap_port}",
+        }
+
         for route in seeds:
             clean_route = route if route.startswith("/") else f"/{route}"
             try:
                 # Just 'touch' the URL so ZAP sees it
                 self.session.get(f"{self.base_url}{clean_route}", proxies=proxies)
-            except: pass
+            except Exception as e:
+                print(f"[-] Warning: Failed to seed ZAP with {clean_route}")
+                print(f"    Error: {e}")
 
         # Run Spider
-        print(f"[*] Starting Spider...")
+        print("[*] Starting Spider...")
         scan_id = self.zap.spider.scan(self.base_url)
         while int(self.zap.spider.status(scan_id)) < 100:
             time.sleep(1)
 
-        print(f"[*] Starting Active Scan...")
+        print("[*] Starting Active Scan...")
         scan_id = self.zap.ascan.scan(self.base_url)
         while int(self.zap.ascan.status(scan_id)) < 100:
             status = self.zap.ascan.status(scan_id)
             print(f"    Attack Progress: {status}%", end="\r")
             time.sleep(5)
-            
+
         self.generate_report()
 
     def generate_report(self):
-        print("\n" + "="*60)
+        print("\n" + "=" * 60)
         print("              SORTED VULNERABILITY REPORT")
-        print("="*60)
-        
+        print("=" * 60)
+
         alerts = self.zap.core.alerts(baseurl=self.base_url)
         unique_alerts = {}
-        
+
         # Defines weights for sorting
         risk_weights = {"High": 3, "Medium": 2, "Low": 1, "Informational": 0}
 
@@ -172,17 +193,16 @@ class WebScanner:
                 key = f"{alert['alert']}|{alert['url']}"
                 if key not in unique_alerts:
                     unique_alerts[key] = alert
-            
+
             sorted_alerts = sorted(
-                unique_alerts.values(), 
-                key=lambda x: risk_weights.get(x['risk'], 0), 
-                reverse=True
+                unique_alerts.values(),
+                key=lambda x: risk_weights.get(x["risk"], 0),
+                reverse=True,
             )
-            
+
             for alert in sorted_alerts:
-                prefix = "[!]"
-                if alert['risk'] == "High": prefix = "[!!! CRITICAL]"
-                
+                prefix = "[!!! CRITICAL]" if alert["risk"] == "High" else "[!]"
+
                 print(f"{prefix} Risk: {alert['risk']} | {alert['alert']}")
                 print(f"    URL: {alert['url']}")
                 print(f"    Param: {alert.get('param', 'N/A')}")
@@ -190,14 +210,15 @@ class WebScanner:
         else:
             print("No vulnerabilities found.")
 
+
 if __name__ == "__main__":
     TARGET = "192.168.122.27/DVWA"
 
     routes = [
         "/vulnerabilities/sqli/",
         "/vulnerabilities/xss_r/",
-        "/vulnerabilities/exec/"
+        "/vulnerabilities/exec/",
     ]
-    
+
     scanner = WebScanner(TARGET, "admin", "password")
     scanner.run_scan(seed_routes=routes)
