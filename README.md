@@ -1,4 +1,4 @@
-# Development of a System for Attack Detection and Prevention in Web Applications
+# Attack Detection and Prevention System for Web Applications
 
 A Master's Thesis (TFM) project that builds a system to detect and prevent attacks in web applications.
 
@@ -6,7 +6,7 @@ A Master's Thesis (TFM) project that builds a system to detect and prevent attac
 
 ## Project Overview
 
-The goal is to build a security system that finds, classifies, and mitigates vulnerabilities in real time. It combines detection and prevention to protect web apps from common attacks and misconfigurations.
+The goal is to build a security system that finds, classifies and mitigates vulnerabilities in real time. It combines detection and prevention to protect web apps from common attacks and misconfigurations.
 
 ---
 
