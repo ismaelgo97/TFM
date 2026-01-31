@@ -15,7 +15,7 @@ class NetworkScanner:
         return shutil.which("nmap") is not None
 
     def execute(self):
-        """Runs Nmap with service detection and vuln scripts, then prints the report."""
+        """Runs Nmap (-sV -T4, optionally --script vuln), then prints the report."""
         if not self._is_installed():
             print("[-] Error: Nmap binary not found.")
             return
@@ -59,7 +59,6 @@ class NetworkScanner:
                 product = port_data.get("product", "")
                 version = port_data.get("version", "")
 
-                # Basic port info
                 print(f"\n[Port {port}]")
                 print(f"  Status:  {state}")
                 print(f"  Service: {service} {product} {version}".strip())
@@ -70,3 +69,9 @@ class NetworkScanner:
                     for script_id, output in port_data["script"].items():
                         clean_output = output.replace("\n", "\n      ")
                         print(f"    - [{script_id}]: {clean_output}")
+
+
+if __name__ == "__main__":
+    TARGET = "192.168.122.27"
+    scanner = NetworkScanner(TARGET, vuln_scan=False)
+    scanner.execute()

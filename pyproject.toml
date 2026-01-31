@@ -5,7 +5,9 @@ description = "Development of a System for Attacks Detection and Prevention in W
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
+    "bs4>=0.0.2",
     "python-nmap>=0.7.1",
+    "python-owasp-zap-v2-4>=0.1.0",
     "requests>=2.32.5",
 ]
 
