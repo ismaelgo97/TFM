@@ -40,8 +40,9 @@ Development uses **Agile (SCRUM)** for iterative work and **DevSecOps** so secur
 
 ## Project Phases & Status
 
-### Phase 1: Vulnerability Analysis (In Progress)
-- **1.1 Network & service scanning**: Automated Nmap-based scanning.
-- **1.1 Web scanning** (pending): DAST for web paths (e.g. /DVWA/).
-- **1.2 Classification & Prioritization**(pending): Sorting findings by severity.
+### Phase 1: Vulnerability Analysis
+- **1.1 Network & service scanning**: Uses `python-nmap` to identify open ports and services.
+- **1.1 Web scanning (DAST)**: Automated authenticated scanning using **OWASP ZAP**.
+- **1.2 Classification**: Results are automatically prioritized by severity and stored as JSON.
+- **1.3 Automated Reporting**: Detailed logs are generated in the `/data/scans/` directory.
 

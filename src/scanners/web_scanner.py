@@ -1,5 +1,8 @@
 import socket
 import time
+import os
+import json
+from datetime import datetime
 
 import requests
 from bs4 import BeautifulSoup
@@ -178,38 +181,59 @@ class WebScanner:
         self.generate_report()
 
     def generate_report(self):
-        print("\n" + "=" * 60)
-        print("              SORTED VULNERABILITY REPORT")
-        print("=" * 60)
+        """
+        Processes ZAP alerts and saves them to a JSON file in /data/scans/.
+        Fulfills TFM Phase 4: Registration and Reports.
+        """
+        # 1. Define and create the directory
+        # Using a path relative to the project root
+        report_dir = os.path.join(os.getcwd(), "data", "scans")
+        os.makedirs(report_dir, exist_ok=True)
 
+        # 2. Format the filename
+        timestamp = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
+        filename = f"WEB_SCAN_{timestamp}.json"
+        filepath = os.path.join(report_dir, filename)
+
+        # 3. Collect and Sort Alerts
         alerts = self.zap.core.alerts(baseurl=self.base_url)
         unique_alerts = {}
-
-        # Defines weights for sorting
         risk_weights = {"High": 3, "Medium": 2, "Low": 1, "Informational": 0}
 
         if alerts:
             for alert in alerts:
+                # Key based on alert type and URL to avoid duplicates
                 key = f"{alert['alert']}|{alert['url']}"
                 if key not in unique_alerts:
                     unique_alerts[key] = alert
 
+            # Sort alerts by risk (High to Low)
             sorted_alerts = sorted(
                 unique_alerts.values(),
                 key=lambda x: risk_weights.get(x["risk"], 0),
                 reverse=True,
             )
 
-            for alert in sorted_alerts:
-                prefix = "[!!! CRITICAL]" if alert["risk"] == "High" else "[!]"
+            # 4. Save to JSON File
+            report_data = {
+                "scan_metadata": {
+                    "target": self.base_url,
+                    "timestamp": datetime.now().isoformat(),
+                    "scan_type": "WEB_SCAN",
+                    "total_vulnerabilities": len(sorted_alerts)
+                },
+                "vulnerabilities": sorted_alerts
+            }
 
-                print(f"{prefix} Risk: {alert['risk']} | {alert['alert']}")
-                print(f"    URL: {alert['url']}")
-                print(f"    Param: {alert.get('param', 'N/A')}")
-                print("-" * 40)
+            with open(filepath, "w") as f:
+                json.dump(report_data, f, indent=4)
+
+            print("\n" + "=" * 60)
+            print(f"[+] Scan Complete. Report generated at:")
+            print(f"    {filepath}")
+            print("=" * 60)
         else:
-            print("No vulnerabilities found.")
-
+            print("[-] No vulnerabilities found to report.")
 
 if __name__ == "__main__":
     TARGET = "192.168.122.27/DVWA"
