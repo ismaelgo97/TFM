@@ -17,6 +17,8 @@ package = true
 
 [project.scripts]
 tool = "main:main"
+lint = "ruff check ."
+format = "ruff format ."
 
 [build-system]
 requires = ["hatchling"]
@@ -24,6 +26,7 @@ build-backend = "hatchling.build"
 
 [dependency-groups]
 dev = [
+    "pre-commit>=4.5.1",
     "ruff>=0.14.14",
 ]
 
