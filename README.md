@@ -36,6 +36,16 @@ Development uses **Agile (SCRUM)** for iterative work and **DevSecOps** so secur
 | **WAF** | ModSecurity |
 | **Development** | Python (managed with [uv](https://github.com/astral-sh/uv)), Visual Studio Code |
 
+
+## Prerequisites
+
+### OWASP ZAP
+The web scanner requires OWASP ZAP to be running in the background. Start it in headless mode with the API key disabled:
+
+```bash
+zaproxy -daemon -host 127.0.0.1 -port 8080 -config api.disablekey=true
+```
+
 ---
 
 ## Project Phases & Status
@@ -46,3 +56,8 @@ Development uses **Agile (SCRUM)** for iterative work and **DevSecOps** so secur
 - **1.2 Classification**: Results are automatically prioritized by severity and stored as JSON.
 - **1.3 Automated Reporting**: Detailed logs are generated in the `/data/scans/` directory.
 
+### Phase 2: Threat Detection & Active Mitigation
+- **2.1 SIEM Integration**: Centralized logging using Elasticsearch and Filebeat to monitor Apache2 traffic in real-time.
+- **2.2 Log Parsing**: Automatic mapping of raw web logs to Elastic Common Schema (ECS) for standardized analysis.
+- **2.3 Heuristic Detection**: Python-based engine that identifies SQLi, XSS, and Path Traversal patterns within a configurable time interval.
+- **2.4 Active Response**: Automated identification and blacklisting of malicious IPs, stored in `/data/firewall/blocked_ips.txt`.

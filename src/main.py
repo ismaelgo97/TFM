@@ -1,6 +1,7 @@
 import argparse
 from scanners.network_scanner import NetworkScanner
 from scanners.web_scanner import WebScanner
+from detection.elk_monitor import ELKMonitor
 
 def main():
     # The Main Parser - entry point for the TFM Security Tool
@@ -49,6 +50,22 @@ def main():
         default=None,
     )
 
+    # ==========================================
+    # 3. Intrusion Detection Command (ELK-based)
+    # ==========================================
+    detect_parser = subparsers.add_parser("detect", help="Query ELK for real-time intrusions")
+    detect_parser.add_argument(
+        "-H", "--host",
+        default="http://localhost:9200",
+        help="Elasticsearch server IP/Hostname (default: localhost)"
+    )
+    detect_parser.add_argument(
+        "-i", "--interval", 
+        type=int, 
+        default=5, 
+        help="Minutes of logs to analyze (default: 5)"
+    )
+
     args = parser.parse_args()
 
     match args.command:
@@ -66,7 +83,35 @@ def main():
                 scanner = WebScanner(args.target, args.username, args.password)
                 scanner.run_scan(seed_routes=args.routes)
             except Exception as e:
-                print(f"[-] Web Scan Failed: {e}")
+                if "ZAP is not running" in str(e):
+                    print("[-] Error: ZAP is not reachable.")
+                    print("[*] Please run: zaproxy -daemon -host 127.0.0.1 -port 8080 -config api.disablekey=true")
+                else:
+                    print(f"[-] Web Scan Failed: {e}")
+
+        case "detect":
+            elk_url = f"http://{args.host}:9200"
+            print(f"[*] Connecting to SIEM at {elk_url}...")
+            
+            try:
+                monitor = ELKMonitor(host=elk_url)
+                if not monitor.check_connection():
+                    print(f"[-] Error: Could not connect to {elk_url}")
+                    return
+                
+                alerts = monitor.query_alerts(interval_minutes=args.interval)
+                
+                if alerts:
+                    monitor.generate_detection_report(alerts)
+                    # Trigger Prevention
+                    blocked_count = monitor.apply_prevention_measures(alerts)
+                    if blocked_count > 0:
+                        print(f"[!] ACTIVE RESPONSE: {blocked_count} malicious IP(s) added to block list.")
+                else:
+                    print("[*] Monitoring complete. No threats found.")
+
+            except Exception as e:
+                print(f"[-] Intrusion Detection Failed: {e}")
 
         case _:
             parser.print_help()

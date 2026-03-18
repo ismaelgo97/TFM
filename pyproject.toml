@@ -6,6 +6,7 @@ readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
     "bs4>=0.0.2",
+    "elasticsearch<9.0.0",
     "pytest>=9.0.2",
     "python-nmap>=0.7.1",
     "python-owasp-zap-v2-4>=0.1.0",
@@ -17,8 +18,6 @@ package = true
 
 [project.scripts]
 tool = "main:main"
-lint = "ruff check ."
-format = "ruff format ."
 
 [build-system]
 requires = ["hatchling"]
@@ -26,7 +25,6 @@ build-backend = "hatchling.build"
 
 [dependency-groups]
 dev = [
-    "pre-commit>=4.5.1",
     "ruff>=0.14.14",
 ]
 
