@@ -126,6 +126,14 @@ make -C scripts/setup-zap status
 
 No additional host tools required. Elasticsearch and Filebeat run inside Docker and are started automatically with `docker compose up`. The `detect` command connects to `http://localhost:9200` by default.
 
+To load the Kibana data view and saved searches bundled with the repo:
+
+```bash
+make -C scripts/setup-kibana install
+```
+
+Open `http://localhost:5601` → *Discover* and pick any of the `TFM - …` saved searches to tail hostile traffic in real time.
+
 ---
 
 ## Project Phases & Status
@@ -139,8 +147,12 @@ No additional host tools required. Elasticsearch and Filebeat run inside Docker 
 ### Phase 2: Threat Detection & Active Mitigation
 - **2.1 SIEM Integration**: Centralized logging using Elasticsearch and Filebeat to monitor Apache2 traffic in real-time.
 - **2.2 Log Parsing**: Automatic mapping of raw web logs to Elastic Common Schema (ECS) for standardized analysis.
-- **2.3 Heuristic Detection**: Python-based engine that identifies SQLi, XSS, and Path Traversal patterns within a configurable time interval.
-- **2.4 Active Response**: Automated identification and blacklisting of malicious IPs, stored in `/data/firewall/blocked_ips.txt`.
+- **2.3 Three-layer Detection Engine** (`src/detection/`):
+  - *Signature engine* — regex catalogue covering SQLi, XSS, path traversal, command injection and file inclusion.
+  - *Anomaly engine* — per-IP statistical baseline (request volume, 4xx rate, path enumeration) with adaptive thresholds.
+  - *Correlation engine* — joins signature and anomaly findings to surface multi-vector attacks, recon→exploit chains, authentication brute force and distributed scans.
+- **2.4 Kibana Visibility**: `scripts/setup-kibana` imports a data view plus saved searches for SQLi, XSS, path traversal, 4xx bursts and authentication attempts.
+- **2.5 Active Response**: Automated identification and blacklisting of malicious IPs, stored in `/data/firewall/blocked_ips.txt`.
 
 ---
 
