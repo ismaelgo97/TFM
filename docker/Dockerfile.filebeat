@@ -1,0 +1,3 @@
+FROM docker.elastic.co/beats/filebeat:8.13.4
+
+COPY --chown=root:root filebeat.yml /usr/share/filebeat/filebeat.yml

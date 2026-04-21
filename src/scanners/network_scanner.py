@@ -1,6 +1,7 @@
 import shutil
 import os
 import json
+import socket
 from datetime import datetime
 
 import nmap
@@ -10,7 +11,11 @@ from utils import Spinner
 
 class NetworkScanner:
     def __init__(self, target_ip, vuln_scan=False):
-        self.target = target_ip
+        # Resolve hostname to IP so it matches nmap's all_hosts() keys
+        try:
+            self.target = socket.gethostbyname(target_ip)
+        except socket.gaierror:
+            self.target = target_ip
         self.vuln_scan = vuln_scan
         self.nm = None
 

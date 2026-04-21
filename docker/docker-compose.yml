@@ -1,0 +1,101 @@
+services:
+
+  # DVWA — scan target, accessible at http://localhost/DVWA
+  # Apache logs go to the shared 'apache_logs' volume for Filebeat
+  dvwa:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: dvwa
+    ports:
+      - "80:80"
+    environment:
+      DVWA_DB_HOST: db
+      DVWA_DB_NAME: dvwa
+      DVWA_DB_USER: dvwa
+      DVWA_DB_PASSWORD: dvwa_pass
+    volumes:
+      - apache_logs:/var/log/apache2
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - tfm_net
+
+  # MariaDB — backend database for DVWA
+  db:
+    image: mariadb:10.11
+    container_name: dvwa_db
+    environment:
+      MYSQL_ROOT_PASSWORD: root_pass
+      MYSQL_DATABASE: dvwa
+      MYSQL_USER: dvwa
+      MYSQL_PASSWORD: dvwa_pass
+    volumes:
+      - dvwa_db_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - tfm_net
+
+  # Elasticsearch 8.x — SIEM backend (Phase 2), security disabled for lab use
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.13.4
+    container_name: elasticsearch
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - xpack.security.http.ssl.enabled=false
+      - ES_JAVA_OPTS=-Xms512m -Xmx512m
+    ports:
+      - "9200:9200"
+    volumes:
+      - es_data:/usr/share/elasticsearch/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -s http://localhost:9200 > /dev/null"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+    networks:
+      - tfm_net
+
+  # Filebeat — ships Apache logs to Elasticsearch in ECS format (Phase 2)
+  filebeat:
+    build:
+      context: .
+      dockerfile: Dockerfile.filebeat
+    container_name: filebeat
+    user: root
+    volumes:
+      - apache_logs:/var/log/apache2:ro
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    networks:
+      - tfm_net
+
+  # Kibana — dashboard at http://localhost:5601 (Phase 2)
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.13.4
+    container_name: kibana
+    ports:
+      - "5601:5601"
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    networks:
+      - tfm_net
+
+networks:
+  tfm_net:
+    driver: bridge
+
+volumes:
+  dvwa_db_data:
+  es_data:
+  apache_logs:

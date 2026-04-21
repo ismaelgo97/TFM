@@ -56,8 +56,8 @@ def main():
     detect_parser = subparsers.add_parser("detect", help="Query ELK for real-time intrusions")
     detect_parser.add_argument(
         "-H", "--host",
-        default="http://localhost:9200",
-        help="Elasticsearch server IP/Hostname (default: localhost)"
+        default="localhost",
+        help="Elasticsearch host (default: localhost)"
     )
     detect_parser.add_argument(
         "-i", "--interval", 

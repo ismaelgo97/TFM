@@ -1,0 +1,23 @@
+# Filebeat — reads Apache logs from the shared Docker volume, parses to ECS,
+# ships to Elasticsearch. The detect command queries the '*filebeat*' index.
+
+filebeat.modules:
+  - module: apache
+    access:
+      enabled: true
+      var.paths: ["/var/log/apache2/access.log*"]
+    error:
+      enabled: true
+      var.paths: ["/var/log/apache2/error.log*"]
+
+output.elasticsearch:
+  hosts: ["elasticsearch:9200"]
+
+setup.kibana:
+  host: "kibana:5601"
+
+setup.ilm.enabled: false
+setup.template.name: "filebeat"
+setup.template.pattern: "filebeat-*"
+
+logging.level: warning
